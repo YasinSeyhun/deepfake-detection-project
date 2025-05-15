@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .result-image {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Deepfake Detection</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Generate Fake Face</h5>
+                    </div>
+                    <div class="card-body">
+                        <button id="generateBtn" class="btn btn-primary w-100">Generate</button>
+                        <div id="generateLoading" class="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <img id="generatedImage" class="result-image" style="display: none;">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Detect Deepfake</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="detectForm">
+                            <div class="mb-3">
+                                <input type="file" class="form-control" id="imageInput" accept="image/*" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Detect</button>
+                        </form>
+                        <div id="detectLoading" class="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <div id="detectionResult" class="mt-3" style="display: none;">
+                            <div class="alert" role="alert"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate fake face
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            const loading = document.getElementById('generateLoading');
+            const image = document.getElementById('generatedImage');
+            
+            loading.style.display = 'block';
+            image.style.display = 'none';
+            
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    image.src = 'data:image/png;base64,' + data.image;
+                    image.style.display = 'block';
+                } else {
+                    alert('Error generating image: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+        
+        // Detect deepfake
+        document.getElementById('detectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('imageInput');
+            const loading = document.getElementById('detectLoading');
+            const result = document.getElementById('detectionResult');
+            const alert = result.querySelector('.alert');
+            
+            if (!fileInput.files.length) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch('/detect', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.style.display = 'block';
+                    alert.className = 'alert ' + (data.is_fake ? 'alert-danger' : 'alert-success');
+                    alert.textContent = `This image is ${data.is_fake ? 'FAKE' : 'REAL'} (${(data.probability * 100).toFixed(2)}% confidence)`;
+                } else {
+                    alert('Error detecting: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 
